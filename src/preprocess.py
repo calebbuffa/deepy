@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import glob
+from osgeo import gdal
+import numpy as np
+from torch import Tensor
 from torch.utils.data import Dataset, DataLoader
 import torch
 import torch.nn as nn
@@ -7,6 +11,35 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from sklearn.metrics import f1_score
 from torchvision import transforms
+
+def load_imagery(path: str, partition: str):
+    images = []
+    masks = []
+    image_paths = glob.glob(os.path.join(path, "images", "*.tif"), recursive=True)
+    mask_paths = glob.glob(os.path.join(path, "labels", "*.tif"), recursive=True)
+
+    if partition == "train":
+        image_paths = image_paths[: int(0.8 * len(image_paths))]
+        mask_paths = mask_paths[: int(0.8 * len(mask_paths))]
+    elif partition == "val":
+        image_paths = image_paths[int(0.8 * len(image_paths)) :]
+        mask_paths = mask_paths[int(0.8 * len(mask_paths)) :]
+
+    for image_path, mask_path in tqdm(zip(image_paths, mask_paths)):
+        mask = gdal.Open(mask_path).ReadAsArray().astype(np.int16)
+        img_dataset = gdal.Open(image_path)
+        image = np.array(
+            [
+                img_dataset.GetRasterBand(i + 1).ReadAsArray()
+                for i in range(img_dataset.RasterCount)
+            ]
+        ).astype(np.float16)
+
+        if image.any() and mask.any():
+            images.append(image / image.max())
+            masks.append(mask)
+
+    return images, masks
 
 class SemanticSegmentationDataset(Dataset):
     def __init__(self, path: str, partition: str):
