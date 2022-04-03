@@ -1,6 +1,7 @@
-
 import torch.nn as nn
 import torch
+from collections import OrderedDict
+from torchvision.ops import FeaturePyramidNetwork
 
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
