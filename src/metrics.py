@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+import torch
+from torch import Tensor
+
 def dice_coeff(
     y_hat: Tensor, y: Tensor, reduce_batch_first: bool = False, epsilon=1e-6
 ):
