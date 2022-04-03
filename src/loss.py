@@ -52,9 +52,9 @@ class DiceLoss:
         y_hat = F.softmax(y_hat, dim=1)
         y = F.one_hot(y.long(), self.n_classes).permute(0, 3, 1, 2).float()
         if self.multiclass:
-            return multiclass_dice_coeff(y_hat, y, reduce_batch_first=True)
+            return 1 - multiclass_dice_coeff(y_hat, y, reduce_batch_first=True)
         else:
-            return dice_coeff(y_hat, y, reduce_batch_first=True)
+            return 1 - dice_coeff(y_hat, y, reduce_batch_first=True)
 
 class FocalLoss(nn.Module):
     def __init__(self):
