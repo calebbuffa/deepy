@@ -1,39 +1,58 @@
 import torch.nn as nn
 import torch
 
-class ResNeXtEncoder(nn.Module):
-    def __init__(self, size: int = 50, pretrained: bool = True):
+class ResNetEncoder(nn.Module):
+    def __init__(self, model: str = "resnet18", pretrained: bool = True):
         super().__init__()
-        version = "resnext50_32x4d" if size == 50 else "resnext101_32x8d"
-        model = torch.hub.load("pytorch/vision:v0.10.0", version, pretrained=pretrained)
+        if model == "resnet18":
+            resnet = torchvision.models.resnet.resnet18(pretrained)
+            self.out_channels = [64, 64, 128, 256, 512]
+        elif model == 'resnet34':
+            resnet = torchvision.models.resnet.resnet34(pretrained)
+            self.out_channels = [64, 64, 128, 256, 512]
+        elif model == 'resnet50':
+            resnet = torchvision.models.resnet.resnet50(pretrained)
+            self.out_channels = [64, 256, 512, 1024, 2048]
+        elif model == 'resnet101':
+            resnet = torchvision.models.resnet.resnet101(pretrained)
+            self.out_channels = [64, 256, 512, 1024, 2048]
+        elif model == 'resnet152':
+            resnet = torchvision.models.resnet.resnet152(pretrained)
+            self.out_channels = [64, 256, 512, 1024, 2048]
+        elif model == 'resnext50':
+            resnet = torchvision.models.resnet.resnext50_32x4d(pretrained)
+            self.out_channels = [64, 256, 512, 1024, 2048]
+        else:
+            raise ValueError(f"{model} is not supported")
 
         if pretrained:
-            for param in model.parameters():
-                param.requires_grad = False
+            resnet.eval()
 
-        inconv = nn.ModuleList()
-        for name, module in model.named_children():
-            if name in {"conv1", "bn1", "relu", "maxpool"}:
-                inconv.append(module)
-            elif name == "layer1":
-                self.down1 = module
-            elif name == "layer2":
-                self.down2 = module
-            elif name == "layer3":
-                self.down3 = module
-            elif name == "layer4":
-                self.down4 = module
+        self.encoding_blocks = nn.ModuleList(
+            [nn.Sequential(
+                resnet.conv1,
+                resnet.bn1,
+                resnet.relu
+            ),
 
-        self.inc = nn.Sequential(*inconv)
+            nn.Sequential(
+                resnet.maxpool,
+                resnet.layer1
+            ),
 
-    def forward(self, x: Tensor) -> list[Tensor, Tensor, Tensor, Tensor, Tensor]:
-        x1 = self.invc(x)
-        x2 = self.down1(x1)
-        x3 = self.down2(x2)
-        x4 = self.down3(x3)
-        x5 = self.down4(x4)
+            resnet.layer2,
+            resnet.layer3,
+            resnet.layer4]
+        )
 
-        return [x5, x4, x3, x2, x1]
+    def forward(self, x: Tensor) -> OrderedDict[Tensor]:
+        encoded_feature_maps = OrderedDict()
+        for idx, encoding_block in enumerate(self.encoding_blocks):
+            x = encoding_block(x)
+            encoded_feature_maps[f"x{idx}"] = x
+
+
+        return encoded_feature_maps
 
 
 class UNetEncoder(nn.Module):
