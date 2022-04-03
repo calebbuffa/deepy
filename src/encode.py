@@ -5,7 +5,17 @@ import torch
 from collections import OrderedDict
 from torchvision.ops import FeaturePyramidNetwork
 
-class ResNetEncoder(nn.Module):
+def Encoder(nn.Module):
+    
+    def forward(self, x: Tensor) -> OrderedDict[Tensor]:
+        encoded_feature_maps = OrderedDict()
+        for idx, encoding_block in enumerate(self.encoding_blocks):
+            x = encoding_block(x)
+            encoded_feature_maps[f"x{idx}"] = x
+
+        return encoded_feature_maps
+
+class ResNetEncoder(Encoder):
     def __init__(self, model: str = "resnet18", pretrained: bool = True):
         super().__init__()
         if model == "resnet18":
@@ -49,29 +59,14 @@ class ResNetEncoder(nn.Module):
             ]
         )
 
-    def forward(self, x: Tensor) -> OrderedDict[Tensor]:
-        encoded_feature_maps = OrderedDict()
-        for idx, encoding_block in enumerate(self.encoding_blocks):
-            x = encoding_block(x)
-            encoded_feature_maps[f"x{idx}"] = x
-
-        return encoded_feature_maps
     
-class DenseNetEncoder(nn.Module):
+class DenseNetEncoder(Encoder):
     def __init__(self):
         super().__init__()
         ...
-     
-    def forward(self, x: Tensor) -> OrderedDict[Tensor]:
-        encoded_feature_maps = OrderedDict()
-        for idx, encoding_block in enumerate(self.encoding_blocks):
-            x = encoding_block(x)
-            encoded_feature_maps[f"x{idx}"] = x
-
-        return encoded_feature_maps
 
 
-class UNetEncoder(nn.Module):
+class UNetEncoder(Encoder):
     def __init__(self, in_channels: int, bilinear: bool = False) -> None:
         super().__init__()
         factor = 2 if bilinear else 1
@@ -86,10 +81,3 @@ class UNetEncoder(nn.Module):
         )
         self.out_channels = [64, 128, 256, 512, 1024]
 
-    def forward(self, x: Tensor) -> OrderedDict[Tensor]:
-        encoded_feature_maps = OrderedDict()
-        for idx, encoding_block in enumerate(self.encoding_blocks):
-            x = encoding_block(x)
-            encoded_feature_maps[f"x{idx}"] = x
-
-        return encoded_feature_maps
