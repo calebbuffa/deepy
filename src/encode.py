@@ -1,3 +1,10 @@
+from __future__ import annotations
+
+import torch.nn as nn
+import torch
+from collections import OrderedDict
+from torchvision.ops import FeaturePyramidNetwork
+
 class ResNetEncoder(nn.Module):
     def __init__(self, model: str = "resnet18", pretrained: bool = True):
         super().__init__()
@@ -26,20 +33,20 @@ class ResNetEncoder(nn.Module):
             resnet.eval()
 
         self.encoding_blocks = nn.ModuleList(
-            [nn.Sequential(
-                resnet.conv1,
-                resnet.bn1,
-                resnet.relu
-            ),
-
-            nn.Sequential(
-                resnet.maxpool,
-                resnet.layer1
-            ),
-
-            resnet.layer2,
-            resnet.layer3,
-            resnet.layer4]
+            [
+                nn.Sequential(
+                    resnet.conv1,
+                    resnet.bn1,
+                    resnet.relu
+                ),
+                nn.Sequential(
+                    resnet.maxpool,
+                    resnet.layer1
+                ),
+                resnet.layer2,
+                resnet.layer3,
+                resnet.layer4,
+            ]
         )
 
     def forward(self, x: Tensor) -> OrderedDict[Tensor]:
@@ -48,6 +55,18 @@ class ResNetEncoder(nn.Module):
             x = encoding_block(x)
             encoded_feature_maps[f"x{idx}"] = x
 
+        return encoded_feature_maps
+    
+class DenseNetEncoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        ...
+     
+    def forward(self, x: Tensor) -> OrderedDict[Tensor]:
+        encoded_feature_maps = OrderedDict()
+        for idx, encoding_block in enumerate(self.encoding_blocks):
+            x = encoding_block(x)
+            encoded_feature_maps[f"x{idx}"] = x
 
         return encoded_feature_maps
 
@@ -58,14 +77,14 @@ class UNetEncoder(nn.Module):
         factor = 2 if bilinear else 1
         self.encoding_blocks = nn.ModuleList(
             [
-                self.inc = DoubleConv(in_channels, 64),
-                self.down1 = Down(64, 128),
-                self.down2 = Down(128, 256),
-                self.down3 = Down(256, 512),
-                self.down4 = Down(512, 1024 // factor),
-                self.out_channels = [64, 128, 256, 512, 1024]
+                DoubleConv(in_channels, 64),
+                Down(64, 128),
+                Down(128, 256),
+                Down(256, 512),
+                Down(512, 1024 // factor),
              ]
         )
+        self.out_channels = [64, 128, 256, 512, 1024]
 
     def forward(self, x: Tensor) -> OrderedDict[Tensor]:
         encoded_feature_maps = OrderedDict()
