@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections import OrderedDict
+
 import torch.nn as nn
 import torch
-from collections import OrderedDict
+from torchvision import models
 from torchvision.ops import FeaturePyramidNetwork
 
 def Encoder(nn.Module):
@@ -19,22 +21,22 @@ class ResNetEncoder(Encoder):
     def __init__(self, model: str = "resnet18", pretrained: bool = True):
         super().__init__()
         if model == "resnet18":
-            resnet = torchvision.models.resnet.resnet18(pretrained)
+            resnet = models.resnet18(pretrained)
             self.out_channels = [64, 64, 128, 256, 512]
         elif model == 'resnet34':
-            resnet = torchvision.models.resnet.resnet34(pretrained)
+            resnet = models.resnet34(pretrained)
             self.out_channels = [64, 64, 128, 256, 512]
         elif model == 'resnet50':
-            resnet = torchvision.models.resnet.resnet50(pretrained)
+            resnet = models.resnet50(pretrained)
             self.out_channels = [64, 256, 512, 1024, 2048]
         elif model == 'resnet101':
-            resnet = torchvision.models.resnet.resnet101(pretrained)
+            resnet = models.resnet101(pretrained)
             self.out_channels = [64, 256, 512, 1024, 2048]
         elif model == 'resnet152':
-            resnet = torchvision.models.resnet.resnet152(pretrained)
+            resnet = models.resnet152(pretrained)
             self.out_channels = [64, 256, 512, 1024, 2048]
         elif model == 'resnext50':
-            resnet = torchvision.models.resnet.resnext50_32x4d(pretrained)
+            resnet = models.resnext50_32x4d(pretrained)
             self.out_channels = [64, 256, 512, 1024, 2048]
         else:
             raise ValueError(f"{model} is not supported")
@@ -61,9 +63,20 @@ class ResNetEncoder(Encoder):
 
     
 class DenseNetEncoder(Encoder):
-    def __init__(self):
+    def __init__(self, model: str = "densenet121", pretrained: bool = True):
         super().__init__()
-        ...
+        elif name == 'densenet121':
+            backbone = models.densenet121(pretrained=pretrained)
+            self.out_channels = []
+        elif name == 'densenet161':
+            backbone = models.densenet161(pretrained=pretrained)
+            self.out_channels = []
+        elif name == 'densenet169':
+            backbone = models.densenet169(pretrained=pretrained)
+            self.out_channels = []
+        elif name == 'densenet201':
+            backbone = models.densenet201(pretrained=pretrained)
+            self.out_channels = []
 
 
 class UNetEncoder(Encoder):
