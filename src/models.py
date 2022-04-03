@@ -109,3 +109,21 @@ class UNet(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         return self.outc(x)
+
+class SoloV2(nn.Module):
+    def __init__(self, backbone: str, pretrained: bool, fpn_out: int) -> None:
+        super().__init__()
+        self.backbone = ResNetEncoder(backbone, pretrained)
+        self.fpn = FeaturePyramidNetwork(self.backbone.out_channels, fpn_out)
+        self.kernel_head = KernelHead()
+        self.feature_head = FeatureHead()
+        self.mask_head = MaskHead()
+        self.nms = MatrixNMS()
+
+    def forward(self, x: Tensor) -> Tensor:
+        encoded_feature_maps = self.backbone(x)
+        fpn_feature_maps = self.fpn(encoded_feature_maps)
+        mask_kernel = self.kernel_head(fpn_feature_maps)
+        features = self.feature_head(fpn_feature_maps)
+        mask = self.mask_head(mask_kernel, features)
+        return self.nms(mask)
