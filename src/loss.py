@@ -55,3 +55,11 @@ class DiceLoss:
             return multiclass_dice_coeff(y_hat, y, reduce_batch_first=True)
         else:
             return dice_coeff(y_hat, y, reduce_batch_first=True)
+
+class FocalLoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+        ...
+    
+    def forward(self, y_hat: Tensor, y: Tensor) -> Tensor:
+        ...
