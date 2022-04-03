@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import torch.nn as nn
 import torch
 from collections import OrderedDict
@@ -19,7 +21,7 @@ class DoubleConv(nn.Module):
             nn.ReLU(inplace=True),
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.double_conv(x)
 
 
@@ -32,7 +34,7 @@ class Down(nn.Module):
             nn.MaxPool2d(2), DoubleConv(in_channels, out_channels)
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.maxpool_conv(x)
 
 
@@ -52,7 +54,7 @@ class Up(nn.Module):
             )
             self.conv = DoubleConv(in_channels, out_channels)
 
-    def forward(self, x1, x2):
+    def forward(self, x1: Tensor, x2: Tensor) -> tensor:
         x1 = self.up(x1)
         # input is BCHW
         diffY = x2.size()[2] - x1.size()[2]
@@ -68,7 +70,7 @@ class OutConv(nn.Module):
         super(OutConv, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.conv(x)
 
  
@@ -128,20 +130,3 @@ class MaskHead(nn.Module):
     def forward(self, mask_kernel, features):
         # convolve mask kernel over features
         return
-
-
-class FocalLoss(nn.Module):
-    def __init__(self):
-        super().__init__()
-        ...
-    
-    def forward(self, y_hat: Tensor, y: Tensor) -> Tensor:
-        ...
-
-class DiceLoss(nn.Module):
-    def __init__(self):
-        super().__init__()
-        ...
-
-    def forward(self, y_hat: Tensor, y: Tensor) -> Tensor:
-        ...
