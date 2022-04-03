@@ -1,5 +1,7 @@
 import torch.nn as nn
 import torch
+from collections import OrderedDict
+from torchvision.ops import FeaturePyramidNetwork
 
 class ResNetEncoder(nn.Module):
     def __init__(self, model: str = "resnet18", pretrained: bool = True):
