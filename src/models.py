@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 import torch.nn as nn
 import torch
+from torch import Tensor
 from collections import OrderedDict
 from torchvision.ops import FeaturePyramidNetwork
+
+from model_blocks import *
 
 
 class UNet(nn.Module):
