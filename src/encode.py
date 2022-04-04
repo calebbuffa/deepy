@@ -16,48 +16,52 @@ def Encoder(nn.Module):
             encoded_feature_maps[f"x{idx}"] = x
 
         return encoded_feature_maps
+    
+     def freeze_encoder(self) -> None:
+        for param in self.backbone.parameters():
+            param.requires_grad = False
 
 class ResNetEncoder(Encoder):
     def __init__(self, model: str = "resnet18", pretrained: bool = True):
         super().__init__()
         if model == "resnet18":
-            resnet = models.resnet18(pretrained)
+            backbone = models.resnet18(pretrained)
             self.out_channels = [64, 64, 128, 256, 512]
         elif model == 'resnet34':
-            resnet = models.resnet34(pretrained)
+            backbone = models.resnet34(pretrained)
             self.out_channels = [64, 64, 128, 256, 512]
         elif model == 'resnet50':
-            resnet = models.resnet50(pretrained)
+            backbone = models.resnet50(pretrained)
             self.out_channels = [64, 256, 512, 1024, 2048]
         elif model == 'resnet101':
-            resnet = models.resnet101(pretrained)
+            backbone = models.resnet101(pretrained)
             self.out_channels = [64, 256, 512, 1024, 2048]
         elif model == 'resnet152':
-            resnet = models.resnet152(pretrained)
+            backbone = models.resnet152(pretrained)
             self.out_channels = [64, 256, 512, 1024, 2048]
         elif model == 'resnext50':
-            resnet = models.resnext50_32x4d(pretrained)
+            backbone = models.resnext50_32x4d(pretrained)
             self.out_channels = [64, 256, 512, 1024, 2048]
         else:
             raise ValueError(f"{model} is not supported")
 
         if pretrained:
-            resnet.eval()
+            backbone.eval()
 
         self.encoding_blocks = nn.ModuleList(
             [
                 nn.Sequential(
-                    resnet.conv1,
-                    resnet.bn1,
-                    resnet.relu
+                    backbone.conv1,
+                    backbone.bn1,
+                    backbone.relu
                 ),
                 nn.Sequential(
-                    resnet.maxpool,
+                    backbone.maxpool,
                     resnet.layer1
                 ),
-                resnet.layer2,
-                resnet.layer3,
-                resnet.layer4,
+                backbone.layer2,
+                backbone.layer3,
+                backbone.layer4,
             ]
         )
 
@@ -77,6 +81,11 @@ class DenseNetEncoder(Encoder):
         elif name == 'densenet201':
             backbone = models.densenet201(pretrained=pretrained)
             self.out_channels = []
+            
+        self.encoding_blocks = nn.ModuleList(
+            [
+            ]
+        )
 
 
 class UNetEncoder(Encoder):
