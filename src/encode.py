@@ -84,6 +84,13 @@ class DenseNetEncoder(Encoder):
             
         self.encoding_blocks = nn.ModuleList(
             [
+                nn.Sequential(
+                    backbone.
+                )
+                backbone.denseblock1,
+                backbone.denseblock2,
+                backbone.denseblock3,
+                backbone.denseblock4
             ]
         )
 
