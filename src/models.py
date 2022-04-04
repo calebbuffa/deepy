@@ -6,6 +6,7 @@ from torch import Tensor
 from collections import OrderedDict
 from torchvision.ops import FeaturePyramidNetwork
 
+from encode import ResNetEncoder, DenseNetEncoder, UNetEncoder
 from model_blocks import *
 
 
