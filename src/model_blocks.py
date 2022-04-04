@@ -114,13 +114,6 @@ class FeatureHead(nn.Module):
         """
         return
 
-class MatrixNMS(nn.Module):
-    def __init__(self):
-        super().__init__()
-        ...
-
-    def forward(self, x):
-        return
 
 class MaskHead(nn.Module):
     def __init__(self):
