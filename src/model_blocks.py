@@ -183,10 +183,53 @@ class GraphFeature(nn.Module):
 
         return feature  # (batch_size, 2*features, num_points, k)
  
-class EdgeConv(nn.Module):
-    def __init__(self):
+class Convolution(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        batch_norm: bool = True,
+        conv_dim: int = 2,
+    ) -> None:
         super().__init__()
-        ...
-    
-    def forward(self):
-        ...
+        conv = nn.Conv2d if conv_dim == 2 else nn.Conv1d
+        bn = nn.BatchNorm2d if conv_dim == 2 else nn.BatchNorm1d
+        self.conv = (
+            nn.Sequential(
+                conv(in_channels, out_channels, kernel_size=1, bias=False),
+                bn(out_channels),
+                nn.LeakyReLU(negative_slope=0.2),
+            )
+            if batch_norm
+            else nn.Sequential(
+                conv(in_channels, out_channels, kernel_size=1),
+                nn.LeakyReLU(negative_slope=0.2),
+            )
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.conv(x)
+
+
+class EdgeConv(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        k: int,
+        method: DistanceMetric,
+        n_convs: int,
+        batch_norm: bool = True,
+        conv_dim: int = 2,
+    ) -> None:
+        super().__init__()
+        modules = nn.ModuleList()
+        modules.append(GraphFeature(k=k, method=method))
+        for i in range(n_convs):
+            in_channels = in_channels if i == 0 else out_channels
+            modules.append(Convolution(in_channels, out_channels, batch_norm, conv_dim))
+
+        self.edge_conv = nn.Sequential(*modules)
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.edge_conv(x)
