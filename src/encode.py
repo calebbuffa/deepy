@@ -17,7 +17,7 @@ def Encoder(nn.Module):
 
         return encoded_feature_maps
     
-     def freeze_encoder(self) -> None:
+     def freeze(self) -> None:
         for param in self.backbone.parameters():
             param.requires_grad = False
 
