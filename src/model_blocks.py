@@ -123,3 +123,70 @@ class MaskHead(nn.Module):
     def forward(self, mask_kernel, features):
         # convolve mask kernel over features
         return
+    
+class GraphFeature(nn.Module):
+    def __init__(self, k: int = 20, method: DistanceMetric = Euclidian):
+        """
+        Initialize DGCNN graph feature.
+
+        Parameters
+        ----------
+        k : int
+            Number of neighbors, defaults to 20.
+        dim9 : bool
+            Whether to use 9D feature, defaults to False.
+        """
+        super().__init__()
+        self.device = (
+            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        )
+        self.knn = method(k)
+        self.k = k
+
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Dynamically update DGCNN graph feature.
+
+        Parameters
+        ----------
+        x : Tensor
+            Input tensor. Of shape (batch, features, points)
+
+        Returns
+        -------
+        Tensor
+            Updated graph feature of shape (batch_size, 2*features, num_points, k).
+        """
+        batch_size, _, num_points = x.size()
+        num_points = x.size(2)
+        x = x.view(batch_size, -1, num_points)
+
+        idx = self.knn(x[:, :3])
+
+        idx_base = (
+            torch.arange(0, batch_size, device=self.device).view(-1, 1, 1) * num_points
+        )
+
+        idx += idx_base
+
+        idx = idx.view(-1)
+
+        _, num_dims, _ = x.size()
+
+        # (batch_size, num_points, features)  -> (batch_size*num_points, features)
+        x = x.transpose(2, 1).contiguous()
+        feature = x.view(batch_size * num_points, -1)[idx, :]
+        feature = feature.view(batch_size, num_points, self.k, num_dims)
+        x = x.view(batch_size, num_points, 1, num_dims).repeat(1, 1, self.k, 1)
+
+        feature = torch.cat((feature - x, x), dim=3).permute(0, 3, 1, 2).contiguous()
+
+        return feature  # (batch_size, 2*features, num_points, k)
+ 
+class EdgeConv(nn.Module):
+    def __init__(self):
+        super().__init__()
+        ...
+    
+    def forward(self):
+        ...
