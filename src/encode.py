@@ -57,7 +57,7 @@ class ResNetEncoder(Encoder):
                 ),
                 nn.Sequential(
                     backbone.maxpool,
-                    resnet.layer1
+                    backbone.layer1
                 ),
                 backbone.layer2,
                 backbone.layer3,
