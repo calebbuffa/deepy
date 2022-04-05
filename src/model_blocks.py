@@ -233,3 +233,56 @@ class EdgeConv(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         return self.edge_conv(x)
+
+    class Pooling(nn.Module):
+    def __init__(
+        self,
+        method: str = "max",
+        keep_dim: bool = False,
+        adaptive: bool = False,
+        size: tuple = None,
+    ) -> None:
+        super().__init__()
+        self.method = method
+
+        if adaptive:
+            assert size is not None
+
+        self.adaptive = adaptive
+        self.size = size
+        self.keep_dim = keep_dim
+
+    def forward(self, x: Tensor) -> Tensor:
+        if self.method == "max" and not self.adaptive:
+            return x.max(dim=-1, keepdim=self.keep_dim)[0]
+        elif self.method == "mean" and not self.adaptive:
+            return x.mean(dim=-1, keepdim=self.keep_dim)[0]
+        elif self.method == "max":
+            return F.adaptive_max_pool2d(x, self.size)  # B, C, 1
+        elif self.method == "mean":
+            return F.adaptive_avg_pool2d(x, self.size)  # B, C, 1
+
+
+class SkipConnection:
+    def __init__(self, method: str = "residual") -> None:
+        assert method in {"residual", "dense"}
+        self.method = method
+
+    def __call__(self, x1: Tensor, x2: Tensor) -> Tensor:
+        if self.method == "residual":
+            diff_c = (x1.shape[1] - x2.shape[1]) // 2
+            return x1 + F.pad(x2, (0, 0, diff_c, diff_c))
+        elif self.method == "dense":
+            return torch.cat([x1, x2], dim=1)
+        else:
+            raise ValueError
+
+
+class Concatenate:
+    def __call__(self, *args) -> Tensor:
+        return torch.cat(args, dim=1)
+
+
+class Repeat:
+    def __call__(self, x: Tensor, n: int) -> Tensor:
+        return x.repeat(1, 1, n)
