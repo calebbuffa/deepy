@@ -28,7 +28,7 @@ class UNet(nn.Module):
         for i in range(len(out_channels)):
             in_channel = self.encoder.out_channels[i]
             try:
-                out_channel = out_channelsi + 1]
+                out_channel = out_channels[i + 1]
                 self.decoder.append(Up(in_channel, out_channel // factor, bilinear))
             except IndexError:
                 out_channel = n_classes
@@ -79,14 +79,9 @@ class DGCNN(nn.Module):
             Embedding dimensions.
         dropout : float
             Percentage of nodes to drop.
-
-        Example
-        -------
-        >>> from p2p3d.models import DGCNN
-        >>> model = DGCNN(num_classes=2, k=20, emb_dims=64, dropout=0.5)
         """
         super().__init__()
-        self.embedding_block_1 = nn.Sequential(
+        self.layer1 = nn.Sequential(
             EdgeConv(
                 in_channels=6 * 2,
                 out_channels=64,
@@ -99,7 +94,7 @@ class DGCNN(nn.Module):
             Pooling(method="max"),
         )
 
-        self.embedding_block_2 = nn.Sequential(
+        self.layer2 = nn.Sequential(
             EdgeConv(
                 in_channels=64 * 2,
                 out_channels=64,
@@ -112,7 +107,7 @@ class DGCNN(nn.Module):
             Pooling(method="max"),
         )
 
-        self.embedding_block_3 = nn.Sequential(
+        self.layer3 = nn.Sequential(
             EdgeConv(
                 in_channels=64 * 2, 
                 out_channels=64,
@@ -125,7 +120,7 @@ class DGCNN(nn.Module):
             Pooling(method="max"),
         )
 
-        self.embedding_block_4 = nn.Sequential(
+        self.layer4 = nn.Sequential(
             Convolution(
                 in_channels=64 * 3,
                 out_channels=emb_dims,
@@ -136,7 +131,7 @@ class DGCNN(nn.Module):
         )
 
         self.fc = nn.Sequential(
-            nn.Conv1d(emb_dims + 192 + 6, 512, kernel_size=1, bias=False),  # 192/18
+            nn.Conv1d(emb_dims + 192, 512, kernel_size=1, bias=False),  # 192/18
             nn.BatchNorm1d(512),
             nn.LeakyReLU(negative_slope=0.2),
             nn.Conv1d(512, 256, kernel_size=1, bias=False),
@@ -148,88 +143,20 @@ class DGCNN(nn.Module):
 
         self.concat = Concatenate()
         self.repeat = Repeat()
-        self.residual_skip = SkipConnection(method="residual")
         self.adaptive_pooling = Pooling(method="max", adaptive=True, size=(64, 1))
 
     def forward(self, x: Tensor) -> Tensor:
-        """
-        Input: (batch_size, 6, num_points)
-
-        Block 1:
-        Graph:
-            (batch_size, 6, num_points) ->
-            (batch_size, 6*2, num_points, k)
-        Convolution:
-            (batch_size, 6*2, num_points, k) ->
-            (batch_size, 64, num_points, k)
-        Convolution:
-            (batch_size, 64, num_points, k) ->
-            (batch_size, 64, num_points, k)
-        Max:
-            (batch_size, 64, num_points, k) ->
-            (batch_size, 64, num_points)
-
-        Block 2:
-        Graph:
-            (batch_size, 64, num_points) ->
-            (batch_size, 64*2, num_points, k)
-        Convolution:
-            (batch_size, 64*2, num_points, k) ->
-            (batch_size, 64, num_points, k)
-        Convolution:
-            (batch_size, 64, num_points, k) ->
-            (batch_size, 64, num_points, k)
-        Max:
-            (batch_size, 64, num_points, k) ->
-            (batch_size, 64, num_points)
-
-        Block 3:
-        Graph:
-            (batch_size, 64, num_points) ->
-            (batch_size, 64*2, num_points, k)
-        Convolution:
-            (batch_size, 64*2, num_points, k) ->
-            (batch_size, 64, num_points, k)
-        Max:
-            (batch_size, 64, num_points, k) ->
-            (batch_size, 64, num_points)
-
-        Concatenate -> (batch_size, 64*3, num_points)
-
-        Block 4:
-        Convolution:
-            (batch_size, 64*3, num_points) ->
-            (batch_size, emb_dims, num_points)
-        Max:
-            (batch_size, emb_dims, num_points) ->
-            (batch_size, emb_dims, 1)
-
-        Repeat -> (batch_size, emb_dims, num_points)
-        Concatenation -> (batch_size, emb_dims+64*3, num_points)
-
-        MLP:
-        Convolution:
-            (batch_size, emb_dims+192+6, num_points) ->
-            (batch_size, 512, num_points)
-        Convolution:
-            (batch_size, 512, num_points) ->
-            (batch_size, 256, num_points)
-        Dropout
-        Convolution:
-            (batch_size, 256, num_points) ->
-            (batch_size, num_classes, num_points)
-        """
         num_points = x.size(2)
 
-        x1 = self.embedding_block_1(x)
-        x2 = self.embedding_block_2(x1)
-
-        x3 = self.embedding_block_3(x2)
+        x1 = self.layer1(x)
+        x2 = self.layer2(x1)
+        x3 = self.layer3(x2)
+        
         x4 = self.concat(x1, x2, x3)
 
-        x4 = self.embedding_block_4(x4)
+        x4 = self.layer4(x4)
+        
         x4 = self.repeat(x4, num_points)
-        x4 = self.residual_skip(x4, x3)
-        x5 = self.concat(x, x1, x2, x3, x4)
+        x5 = self.concat(x1, x2, x3, x4)
 
         return self.fc(x5)
