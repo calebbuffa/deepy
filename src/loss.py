@@ -29,7 +29,7 @@ class FocalLoss(nn.Module):
     def forward(self, y_hat: Tensor, y: Tensor) -> Tensor:
         ...
 
-        class CrossEntropy:
+class CrossEntropy:
     """
     y_hat: [N, num_classes]
 
