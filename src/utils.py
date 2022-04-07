@@ -59,3 +59,19 @@ class Cosine(DistanceMetric):
         similarity_matrix = x_norm.transpose(2, 1) @ x_norm
 
         return torch.topk(similarity_matrix, k=self.k, axis=-1)[1]
+    
+class Conv1x1(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, **kwargs):
+        super().__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, **kwargs)
+     
+    def forward(self, x: Tensor) -> Tensor:
+        return self.conv(x)
+    
+class Conv3x3(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, **kwargs):
+        super().__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=self.kwargs.get("padding", 1), **kwargs)
+        
+     def forward(self, x: Tensor) -> Tensor:
+        return selv.conv(x)
