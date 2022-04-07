@@ -7,22 +7,6 @@ from torchvision.ops import FeaturePyramidNetwork
 
 from encode import ResnetEncoder
 
-class Conv1x1(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, **kwargs):
-        super().__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, **kwargs)
-     
-    def forward(self, x: Tensor) -> Tensor:
-        return self.conv(x)
-    
-class Conv3x3(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, **kwargs):
-        super().__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=self.kwargs.get("padding", 1), **kwargs)
-        
-     def forward(self, x: Tensor) -> Tensor:
-        return selv.conv(x)
-
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
 
