@@ -42,6 +42,81 @@ class Unet(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         return self.outc(x)
+    
+class FPNSegmentation(nn.Module):
+    name: str = "fpn_segmentation"
+
+    def __init__(
+        self,
+        backbone: str = "resnet18",
+        pretrained: bool = True,
+        fpn_out_channels: int = 256,
+        decode_channels: int = 128,
+        n_classes: int = 2,
+    ):
+        super().__init__()
+        self.n_classes = n_classes
+
+        self.fpn = FPN(
+            backbone=backbone, pretrained=pretrained, fpn_out_channels=fpn_out_channels
+        )
+
+        # for 1/4 scale features
+        self.head1 = nn.Sequential(
+            Conv3x3(fpn_out_channels, decode_channels),
+            Conv3x3(decode_channels, decode_channels),
+        )
+        self.head2 = nn.Sequential(
+            UpSample(
+                fpn_out_channels,
+                fpn_out_channels,
+                factor=self.fpn.encoder.down_dimensions[1]
+                // self.fpn.encoder.down_dimensions[0],
+            ),
+            Conv3x3(fpn_out_channels, decode_channels),
+            Conv3x3(decode_channels, decode_channels),
+        )
+        self.head3 = nn.Sequential(
+            UpSample(
+                fpn_out_channels,
+                fpn_out_channels,
+                factor=self.fpn.encoder.down_dimensions[2]
+                // self.fpn.encoder.down_dimensions[0],
+            ),
+            Conv3x3(fpn_out_channels, decode_channels),
+            Conv3x3(decode_channels, decode_channels),
+        )
+        self.head4 = nn.Sequential(
+            UpSample(
+                fpn_out_channels,
+                fpn_out_channels,
+                factor=self.fpn.encoder.down_dimensions[3]
+                // self.fpn.encoder.down_dimensions[0],
+            ),
+            Conv3x3(fpn_out_channels, decode_channels),
+            Conv3x3(decode_channels, decode_channels),
+        )
+        # concatenated features
+        self.outc = nn.Sequential(
+            UpSample(
+                in_channels=len(self.fpn.encoder.down_dimensions) * decode_channels,
+                out_channels=len(self.fpn.encoder.down_dimensions) * decode_channels,
+                factor=self.fpn.encoder.down_dimensions[0],
+            ),
+            Conv3x3(in_channels=4 * decode_channels, out_channels=2 * decode_channels,),
+            Conv1x1(in_channels=2 * decode_channels, out_channels=n_classes,),
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        features: OrderedDict[str, Tensor] = self.fpn(x)
+
+        p2 = self.head1(features["p2"])  # -> [B, 128, H/4, W/4]
+        p3 = self.head2(features["p3"])  # -> [B, 128, H/4, W/4]
+        p4 = self.head3(features["p4"])  # -> [B, 128, H/4, W/4]
+        p5 = self.head4(features["p5"])  # -> [B, 128, H/4, W/4]
+
+        x = torch.cat([p2, p3, p4, p5], dim=1)  # -> [B, 512, H/4, W/4]
+        return self.outc(x)  # -> [B, num_classes, H, W]
 
 class SoloV2(nn.Module):
     def __init__(self, backbone: str, pretrained: bool, fpn_out: int) -> None:
