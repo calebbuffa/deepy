@@ -75,3 +75,26 @@ class Conv3x3(nn.Module):
         
      def forward(self, x: Tensor) -> Tensor:
         return selv.conv(x)
+    
+class Atrous3x3Conv(nn.Module):
+    def __init__(self, in_channels, out_channels, dilation_rate, **kwargs):
+        super().__init__()
+        self.conv = Conv3x3(
+            in_channels,
+            out_channels,
+            padding=dilation_rate,
+            dilation=dilation_rate,
+            **kwargs
+        )
+
+    def forward(self, x):
+        return self.conv(x)
+    
+class UpSample(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, factor: int, bilinear: bool = False, **kwargs):
+        if bilinear:
+            self.up = nn.Upsample(scale_factor=factor, mode=kwargs.get("mode", "bilinear"), align_corners=True)
+         else:
+            self.up = nn.ConvTraponse2d(
+                in_channels, out_channels // 2), kernel_size=factor, stride=factor)
+
