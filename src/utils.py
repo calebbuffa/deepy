@@ -97,4 +97,16 @@ class UpSample(nn.Module):
          else:
             self.up = nn.ConvTraponse2d(
                 in_channels, out_channels // 2), kernel_size=factor, stride=factor)
+            
+class ASPPHead(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, rate: int):
+        super().__init__()
+        self.block = nn.Sequential(
+             Atrous3x3Conv(in_channels, out_channels, rate, bias=False),
+             nn.BatchNorm2d(out_channels),
+             nn.ReLU(inplace=True),
+        )
+
+    def forward(self, x):
+        return self.block(x)
 
