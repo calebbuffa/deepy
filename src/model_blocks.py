@@ -5,6 +5,8 @@ import torch
 from collections import OrderedDict
 from torchvision.ops import FeaturePyramidNetwork
 
+from encode import ResnetEncoder
+
 class Conv1x1(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, **kwargs):
         super().__init__()
@@ -136,16 +138,27 @@ class ASPP(nn.Module):
         return self.outc(x)
 
 
-class SkipConnection:
-    def __init__(self, method: str = "residual") -> None:
-        assert method in {"residual", "dense"}
-        self.method = method
+class FPN(nn.Module):
+    name: str = "fpn"
 
-    def __call__(self, x1: Tensor, x2: Tensor) -> Tensor:
-        if self.method == "residual":
-            diff_c = (x1.shape[1] - x2.shape[1]) // 2
-            return x1 + F.pad(x2, (0, 0, diff_c, diff_c))
-        elif self.method == "dense":
-            return torch.cat([x1, x2], dim=1)
+    def __init__(
+        self,
+        backbone: str = "resnet18",
+        pretrained: bool = True,
+        fpn_out_channels: int = 256,
+    ):
+        super().__init__()
+        if "res" in backbone:
+            self.encoder = ResnetEncoder(model=backbone, pretrained=pretrained)
         else:
-            raise ValueError
+            raise ValueError(f"{backbone} is not supported")
+
+        if pretrained:
+            self.encoder.freeze()
+
+        self.fpn = FeaturePyramidNetwork(
+            in_channels_list=self.encoder.out_channels, out_channels=fpn_out_channels
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.fpn(self.encoder(x))
