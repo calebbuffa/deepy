@@ -5,6 +5,22 @@ import torch
 from collections import OrderedDict
 from torchvision.ops import FeaturePyramidNetwork
 
+class Conv1x1(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, **kwargs):
+        super().__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, **kwargs)
+     
+    def forward(self, x: Tensor) -> Tensor:
+        return self.conv(x)
+    
+class Conv3x3(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, **kwargs):
+        super().__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, **kwargs)
+        
+     def forward(self, x: Tensor) -> Tensor:
+        return selv.conv(x)
+
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
 
@@ -13,10 +29,10 @@ class DoubleConv(nn.Module):
         if not mid_channels:
             mid_channels = out_channels
         self.double_conv = nn.Sequential(
-            nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
+            Conv3x3(in_channels, mide_channels, bias=False)
             nn.BatchNorm2d(mid_channels),
             nn.ReLU(inplace=True),
-            nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            Conv3x3(mid_channels, out_channels, bias=False)
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
         )
@@ -36,6 +52,14 @@ class Down(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         return self.maxpool_conv(x)
+    
+class Upsample(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, factor: int, bilinear: bool = False, **kwargs):
+        if bilinear:
+            self.up = nn.Upsample(scale_factor=factor, mode=kwargs.get("mode", "bilinear"), align_corners=True)
+         else:
+            self.up = nn.ConvTraponse2d(
+                in_channels, out_channels // 2), kernel_size=factor, stride=factor)
 
 
 class Up(nn.Module):
@@ -43,16 +67,9 @@ class Up(nn.Module):
 
     def __init__(self, in_channels, out_channels, bilinear=True):
         super().__init__()
-
-        # if bilinear, use the normal convolutions to reduce the number of channels
-        if bilinear:
-            self.up = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
-            self.conv = DoubleConv(in_channels, out_channels, in_channels // 2)
-        else:
-            self.up = nn.ConvTranspose2d(
-                in_channels, in_channels // 2, kernel_size=2, stride=2
-            )
-            self.conv = DoubleConv(in_channels, out_channels)
+        factor = 2 if bilinear else 1
+        self.up = Upsample(in_channels, out_channels, factor=2, bilinear)
+        self.conv = DoubleConv(in_channels, out_channels, in_channels // factor)
 
     def forward(self, x1: Tensor, x2: Tensor) -> tensor:
         x1 = self.up(x1)
@@ -62,15 +79,6 @@ class Up(nn.Module):
 
         x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2, diffY // 2, diffY - diffY // 2])
         x = torch.cat([x2, x1], dim=1)
-        return self.conv(x)
-
-
-class OutConv(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(OutConv, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
-
-    def forward(self, x: Tensor) -> Tensor:
         return self.conv(x)
 
  
