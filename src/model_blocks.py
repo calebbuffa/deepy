@@ -9,7 +9,7 @@ from encode import ResnetEncoder
 from utils import Conv3x3, Conv1x1, Atrous3x3Conv, UpSample, ASPPHead
 
 class DoubleConv(nn.Module):
-    """(convolution => [BN] => ReLU) * 2"""
+    """Unet double conv"""
 
     def __init__(self, in_channels, out_channels, mid_channels=None):
         super().__init__()
@@ -29,7 +29,7 @@ class DoubleConv(nn.Module):
 
 
 class Down(nn.Module):
-    """Unet downsaling with maxpool then double conv"""
+    """Unet downsaling + maxpool + double conv"""
 
     def __init__(self, in_channels, out_channels):
         super().__init__()
@@ -42,7 +42,7 @@ class Down(nn.Module):
 
 
 class Up(nn.Module):
-    """Unet upscaling and double conv"""
+    """Unet upscaling + double conv"""
 
     def __init__(self, in_channels, out_channels, bilinear=True):
         super().__init__()
