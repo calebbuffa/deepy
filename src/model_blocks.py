@@ -6,7 +6,7 @@ from collections import OrderedDict
 from torchvision.ops import FeaturePyramidNetwork
 
 from encode import ResnetEncoder
-from utils import Conv3x3, Conv1x1, Atrous3x3Conv, UpSample
+from utils import Conv3x3, Conv1x1, Atrous3x3Conv, UpSample, ASPPHead
 
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -59,22 +59,10 @@ class Up(nn.Module):
         x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2, diffY // 2, diffY - diffY // 2])
         x = torch.cat([x2, x1], dim=1)
         return self.conv(x)
-    
-class ASPPHead(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, rate: int):
-        super().__init__()
-        self.block = nn.Sequential(
-             Atrous3x3Conv(in_channels, out_channels, rate, bias=False),
-             nn.BatchNorm2d(out_channels),
-             nn.ReLU(inplace=True),
-        )
-
-    def forward(self, x):
-        return self.block(x)
 
 
 
-class ASPP(nn.Module):
+class AtrousSpatialPyramidPooling(nn.Module):
     dilation_rates = [6, 12, 18]
 
     def __init__(self, in_channels: int, out_channels: int):
