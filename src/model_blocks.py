@@ -29,7 +29,7 @@ class DoubleConv(nn.Module):
 
 
 class Down(nn.Module):
-    """Downscaling with maxpool then double conv"""
+    """Unet downsaling with maxpool then double conv"""
 
     def __init__(self, in_channels, out_channels):
         super().__init__()
@@ -42,12 +42,12 @@ class Down(nn.Module):
 
 
 class Up(nn.Module):
-    """Upscaling then double conv"""
+    """Unet upscaling and double conv"""
 
     def __init__(self, in_channels, out_channels, bilinear=True):
         super().__init__()
         factor = 2 if bilinear else 1
-        self.up = Upsample(in_channels, out_channels, factor=2, bilinear)
+        self.up = UpSample(in_channels, out_channels, factor=2, bilinear)
         self.conv = DoubleConv(in_channels, out_channels, in_channels // factor)
 
     def forward(self, x1: Tensor, x2: Tensor) -> tensor:
@@ -62,7 +62,8 @@ class Up(nn.Module):
 
 
 
-class AtrousSpatialPyramidPooling(nn.Module):
+class ASPP(nn.Module):
+    """Atrous Spatial Pyramid Pooling"""
     dilation_rates = [6, 12, 18]
 
     def __init__(self, in_channels: int, out_channels: int):
@@ -90,7 +91,7 @@ class AtrousSpatialPyramidPooling(nn.Module):
 
 
 class FPN(nn.Module):
-    name: str = "fpn"
+    """Feature Pyramid Network with backbone."""
 
     def __init__(
         self,
