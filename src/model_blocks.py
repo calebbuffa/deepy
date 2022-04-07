@@ -6,6 +6,7 @@ from collections import OrderedDict
 from torchvision.ops import FeaturePyramidNetwork
 
 from encode import ResnetEncoder
+from utils import Conv3x3, Conv1x1, Atrous3x3Conv, UpSample
 
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -38,14 +39,6 @@ class Down(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         return self.maxpool_conv(x)
-    
-class Upsample(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, factor: int, bilinear: bool = False, **kwargs):
-        if bilinear:
-            self.up = nn.Upsample(scale_factor=factor, mode=kwargs.get("mode", "bilinear"), align_corners=True)
-         else:
-            self.up = nn.ConvTraponse2d(
-                in_channels, out_channels // 2), kernel_size=factor, stride=factor)
 
 
 class Up(nn.Module):
@@ -67,20 +60,6 @@ class Up(nn.Module):
         x = torch.cat([x2, x1], dim=1)
         return self.conv(x)
     
-class Atrous3x3Conv(nn.Module):
-    def __init__(self, in_channels, out_channels, dilation_rate, **kwargs):
-        super(Atrous3x3Conv, self).__init__()
-        self.conv = Conv3x3(
-            in_channels,
-            out_channels,
-            padding=dilation_rate,
-            dilation=dilation_rate,
-            **kwargs
-        )
-
-    def forward(self, x):
-        return self.conv(x)
-
 class ASPPHead(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, rate: int):
         super().__init__()
