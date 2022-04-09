@@ -1,8 +1,67 @@
-import torch.nn as nn
+"""Model heads."""
+
+from __future__ import annotations
+
+import torch
 from collections import OrderedDict
-from torch import tensor
+from torch import Tensor, nn
+
+from model_blocks import FPNUpSample, Conv3x3, Conv1x1, UpSample
+
+class SemanticFPNHead(nn.Module):
+    def __init__(self, in_channels: int = 256, out_channels: int = 128, n_classes: int = 2):
+        super().__init__()
+        mid_channels = in_channels - int((in_channels - out_channels) * 0.5)
+        self.up1 = nn.Sequential(
+            FPNUpSample(
+                in_channels=in_channels, out_channels=mid_channels
+            ),
+            FPNUpSample(
+                in_channels=mid_channels,
+                out_channels=mid_channels
+            ),
+            FPNUpSample(
+                in_channels=mid_channels, 
+                out_channels=out_channels
+            ),
+        )
+        self.up2 = nn.Sequential(
+            FPNUpSample(
+                in_channels=in_channels, out_channels=mid_channels
+            ),
+            FPNUpSample(
+                in_channels=mid_channels,
+                out_channels=out_channels
+            ),
+        )
+        self.up3 = FPNUpSample(in_channels=in_channels, out_channels=out_channels)
+        self.conv = Conv3x3(in_channels=in_channels, out_channels=out_channels)
+
+        self.outc = nn.Sequential(
+            UpSample(
+                in_channels=out_channels * 4, 
+                out_channels=n_classes, factor=4, bilinear=True
+            ),
+            Conv1x1(in_channels=out_channels * 4, out_channels=n_classes),
+            nn.Softmax(dim=1)
+        )
+
+    def forward(self, feature_maps: OrderedDict[str, Tensor]) -> Tensor:
+        x1 = self.up1(feature_maps["p5"])
+        x2 = self.up2(feature_maps["p4"])
+        x2 += x1
+        x3 = self.up3(feature_maps["p3"])
+        x3 += x2
+        x4 = self.conv(feature_maps["p2"])
+        x4 += x3
+
+        x = torch.cat([x1, x2, x3, x4], dim=1)
+
+        return self.outc(x)
+
 
 class KernelHead(nn.Module):
+    """SoloV2 Kernel Head"""
     def __init__(self):
         super().__init__()
         ...
