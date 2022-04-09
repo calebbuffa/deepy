@@ -10,6 +10,19 @@ from model_blocks import FPNUpSample, Conv3x3, Conv1x1, UpSample
 
 class SemanticFPNHead(nn.Module):
     def __init__(self, in_channels: int = 256, out_channels: int = 128, n_classes: int = 2):
+        """
+        Semantic Feature Pyramid Network.
+        https://openaccess.thecvf.com/content_CVPR_2019/papers/Kirillov_Panoptic_Feature_Pyramid_Networks_CVPR_2019_paper.pdf
+
+        Parameters
+        ----------
+        in_channels : int 
+            Number of channels out by Feature Pyramid Network, defaults to 256.
+        out_channels : int
+            Number of output channels per upsampling, defaults to 128.
+        n_classes : int
+            Number of clases to predict. Must be greater than 2, Defaults to 2.
+        """
         super().__init__()
         mid_channels = in_channels - int((in_channels - out_channels) * 0.5)
         self.up1 = nn.Sequential(
@@ -62,9 +75,9 @@ class SemanticFPNHead(nn.Module):
 
 class KernelHead(nn.Module):
     """SoloV2 Kernel Head"""
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__()
-        ...
+        raise NotImplementedError
 
     def forward(self, fpn_features: OrderedDict[Tensor]) -> Tensor:
         """
@@ -84,10 +97,10 @@ class KernelHead(nn.Module):
         """
         return 
 
-class FeatureHead(nn.Module):
-    def __init__(self):
+class SegmentationHead(nn.Module):
+    def __init__(self, *args, **kwargs):
         super().__init__()
-        ...
+        raise NotImplementedError
     
     def forward(self, fpn_features: OrderedDict[Tensor]) -> Tensor:
         """
@@ -99,14 +112,4 @@ class FeatureHead(nn.Module):
         deepest FPN level (at 1/32 scale), before the convolutions and bilinear 
         upsamplings.
         """
-        return
-
-
-class MaskHead(nn.Module):
-    def __init__(self):
-        super().__init__()
-        ...
-    
-    def forward(self, mask_kernel, features):
-        # convolve mask kernel over features
         return

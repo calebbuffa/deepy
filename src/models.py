@@ -60,9 +60,6 @@ class SoloV2(nn.Module):
     name: str = "solov2"
     def __init__(self, backbone: str, pretrained: bool, fpn_out_channels: int) -> None:
         super().__init__()
-        self.fpn = FPN(
-            backbone=backbone, pretrained=pretrained, fpn_out_channels=fpn_out_channels
-        )
         self.kernel_head = KernelHead()
         self.mask_head = SemanticFPN(
             backbone=backbone, 
@@ -72,9 +69,7 @@ class SoloV2(nn.Module):
         self.nms = MatrixNMS()
 
     def forward(self, x: Tensor) -> Tensor:
-        encoded_feature_maps = self.backbone(x)
-        fpn_feature_maps = self.fpn(encoded_feature_maps)
         mask_kernel = self.kernel_head(fpn_feature_maps)
-        mask = self.mask_head(mask_kernel, features)
+        mask = self.mask_head(mask_kernel, x)
         return self.nms(mask)
     
