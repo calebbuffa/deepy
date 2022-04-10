@@ -38,7 +38,7 @@ def multiclass_dice_coeff(
         dice_coeff(
             y_hat[:, channel, ...], y[:, channel, ...], reduce_batch_first, epsilon,
         )
-        for channel in range(y_hat.shape[1])
+        for channel in range(y_hat.shape[1][1:]) # all classes except background
     )
 
     return dice / y_hat.shape[1]

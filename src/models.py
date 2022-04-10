@@ -1,3 +1,5 @@
+"""Models."""
+
 from __future__ import annotations
 
 import torch.nn as nn
@@ -19,7 +21,9 @@ class SemanticFPN(nn.Module):
         n_classes: int = 2,
         pretrained: bool = True,
         fpn_out_channels: int = 256,
-        decode_out_channels: int = 128
+        decode_out_channels: int = 128,
+        residual: bool = False,
+        attention: bool = False
     ):
         """
         Semantic segmentation with Feature Pyramid Network.
@@ -37,18 +41,28 @@ class SemanticFPN(nn.Module):
             defaults to 256.
         decode_out_channels : int
             Number of channels after upsampling, defaults to 128.
+        residual : bool
+            Whether to apply residual skip connections in every upsampling block,
+            defaults to False.
+        attention : bool
+            Whether to apply self attention via squeeze and excitation blocks
+            after every upsamplingn block, defaults to False.
         """
         super().__init__()
         self.n_classes = n_classes
 
         self.fpn = FPN(
-            backbone=backbone, pretrained=pretrained, fpn_out_channels=fpn_out_channels
+            backbone=backbone, 
+            pretrained=pretrained, 
+            fpn_out_channels=fpn_out_channels,
         )
 
         self.head = SemanticFPNHead(
             in_channels=fpn_out_channels, 
             out_channels=decode_out_channels, 
-            n_classes=n_classes
+            n_classes=n_classes,
+            residual=residual,
+            attention=attention
         )
 
     def forward(self, x: Tensor) -> Tensor:

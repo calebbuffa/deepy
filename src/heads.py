@@ -6,10 +6,18 @@ import torch
 from collections import OrderedDict
 from torch import Tensor, nn
 
-from model_blocks import FPNUpSample, Conv3x3, Conv1x1, UpSample
+from model_blocks import FPNUpsample, SqueezeExcitationBlock
+from utils import Conv3x3, Conv1x1, Upsample
 
 class SemanticFPNHead(nn.Module):
-    def __init__(self, in_channels: int = 256, out_channels: int = 128, n_classes: int = 2):
+    def __init__(
+        self, 
+        in_channels: int = 256, 
+        out_channels: int = 128, 
+        n_classes: int = 2, 
+        residual: bool = False, 
+        attention: bool = False
+    ):
         """
         Semantic Feature Pyramid Network.
         https://openaccess.thecvf.com/content_CVPR_2019/papers/Kirillov_Panoptic_Feature_Pyramid_Networks_CVPR_2019_paper.pdf
@@ -22,36 +30,82 @@ class SemanticFPNHead(nn.Module):
             Number of output channels per upsampling, defaults to 128.
         n_classes : int
             Number of clases to predict. Must be greater than 2, Defaults to 2.
+        residual : bool
+            Whether to apply residual skip connections in every upsampling layer,
+            defaults to False.
         """
         super().__init__()
         mid_channels = in_channels - int((in_channels - out_channels) * 0.5)
-        self.up1 = nn.Sequential(
-            FPNUpSample(
-                in_channels=in_channels, out_channels=mid_channels
-            ),
-            FPNUpSample(
-                in_channels=mid_channels,
-                out_channels=mid_channels
-            ),
-            FPNUpSample(
-                in_channels=mid_channels, 
-                out_channels=out_channels
-            ),
+        up1 = nn.ModuleList([
+                FPNUpsample(
+                    in_channels=in_channels, 
+                    out_channels=mid_channels, 
+                    residual=residual,
+                ),
+                FPNUpsample(
+                    in_channels=mid_channels,
+                    out_channels=mid_channels,
+                    residual=residual,
+                ),
+                FPNUpsample(
+                    in_channels=mid_channels, 
+                    out_channels=out_channels,
+                    residual=residual,
+                )
+            ]
         )
-        self.up2 = nn.Sequential(
-            FPNUpSample(
-                in_channels=in_channels, out_channels=mid_channels
-            ),
-            FPNUpSample(
-                in_channels=mid_channels,
-                out_channels=out_channels
-            ),
+
+        up2 = nn.ModuleList(
+            [
+                FPNUpsample(
+                    in_channels=in_channels, 
+                    out_channels=mid_channels,
+                    residual=residual,
+                ),
+                FPNUpsample(
+                    in_channels=mid_channels,
+                    out_channels=out_channels,
+                    residual=residual,
+                )
+            ]
         )
-        self.up3 = FPNUpSample(in_channels=in_channels, out_channels=out_channels)
-        self.conv = Conv3x3(in_channels=in_channels, out_channels=out_channels)
+
+        up3 = nn.ModuleList(
+            [
+                FPNUpsample(
+                    in_channels=in_channels, 
+                    out_channels=out_channels,
+                    residual=residual
+                )
+            ]
+        )
+
+        conv = nn.ModuleList(
+            [
+                Conv3x3(in_channels=in_channels, out_channels=out_channels)
+            ]
+        )
+
+        if attention:
+            up1.insert(1, SqueezeExcitationBlock(mid_channels))
+            up1.insert(3, SqueezeExcitationBlock(mid_channels))
+            up1.append(SqueezeExcitationBlock(out_channels))
+
+            up2.insert(1, SqueezeExcitationBlock(mid_channels))
+            up2.append(SqueezeExcitationBlock(out_channels))
+
+            up3.append(SqueezeExcitationBlock(out_channels))
+
+            conv.append(SqueezeExcitationBlock(out_channels))
+
+
+        self.up1 = nn.Sequential(*up1)
+        self.up2 = nn.Sequential(*up2)
+        self.up3 = nn.Sequential(*up3)
+        self.conv = nn.Sequential(*conv)
 
         self.outc = nn.Sequential(
-            UpSample(
+            Upsample(
                 in_channels=out_channels * 4, 
                 out_channels=n_classes, factor=4, bilinear=True
             ),
@@ -59,14 +113,16 @@ class SemanticFPNHead(nn.Module):
             nn.Softmax(dim=1)
         )
 
+        self.residual = residual
+
     def forward(self, feature_maps: OrderedDict[str, Tensor]) -> Tensor:
         x1 = self.up1(feature_maps["p5"])
         x2 = self.up2(feature_maps["p4"])
-        x2 += x1
+        x2 = x2 + x1 if self.residual else x2
         x3 = self.up3(feature_maps["p3"])
-        x3 += x2
+        x3 = x3 + x2 if self.residual else x3
         x4 = self.conv(feature_maps["p2"])
-        x4 += x3
+        x4 += x3 + x2 + x1
 
         x = torch.cat([x1, x2, x3, x4], dim=1)
 
@@ -97,7 +153,7 @@ class KernelHead(nn.Module):
         """
         return 
 
-class SegmentationHead(nn.Module):
+class FeatureHead(nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__()
         raise NotImplementedError
