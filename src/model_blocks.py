@@ -84,6 +84,7 @@ class FPN(nn.Module):
     def __init__(
         self,
         backbone: str = "resnet18",
+        in_channels: int = 3,
         pretrained: bool = True,
         fpn_out_channels: int = 256,
     ):
@@ -97,7 +98,9 @@ class FPN(nn.Module):
             self.encoder.freeze()
 
         self.fpn = FeaturePyramidNetwork(
-            in_channels_list=self.encoder.out_channels, out_channels=fpn_out_channels
+            in_channels_list=self.encoder.out_channels, 
+            out_channels=fpn_out_channels,
+            in_channels=in_channels
         )
 
     def forward(self, x: Tensor) -> Tensor:
