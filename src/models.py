@@ -18,6 +18,7 @@ class SemanticFPN(nn.Module):
     def __init__(
         self,
         backbone: str = "resnet18",
+        in_channels: int = 3,
         n_classes: int = 2,
         pretrained: bool = True,
         fpn_out_channels: int = 256,
@@ -55,6 +56,7 @@ class SemanticFPN(nn.Module):
             backbone=backbone, 
             pretrained=pretrained, 
             fpn_out_channels=fpn_out_channels,
+            in_channels=in_channels
         )
 
         self.head = SemanticFPNHead(
