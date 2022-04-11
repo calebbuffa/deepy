@@ -33,9 +33,7 @@ class FPNUpsample(nn.Module):
         super().__init__()
         self.block = nn.Sequential(
             Conv3x3(in_channels, out_channels),
-            nn.GroupNorm(
-                num_groups=kwargs.get("num_groups", 4), num_channels=out_channels
-            ), 
+            nn.BatchNorm2d(out_channels), 
             nn.ReLU()
         )
         
@@ -122,7 +120,7 @@ class SqueezeExcitationBlock(nn.Module):
         self.fc = nn.Sequential(
             Conv1x1(in_channels, in_channels // r),
             nn.ReLU(),
-            Conv1x1(in_channels // 2, in_channels),
+            Conv1x1(in_channels // r, in_channels),
             nn.Sigmoid()
         )
     
