@@ -110,7 +110,7 @@ class SemanticFPNHead(nn.Module):
                 out_channels=n_classes, factor=4, bilinear=True
             ),
             Conv1x1(in_channels=out_channels * 4, out_channels=n_classes),
-            nn.Softmax(dim=1)
+            nn.Dropout2d()
         )
 
         self.residual = residual
