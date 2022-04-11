@@ -25,7 +25,7 @@ class Encoder(nn.Module):
             param.requires_grad = False
 
 class ResnetEncoder(Encoder):
-    def __init__(self, model: str = "resnet18", pretrained: bool = True):
+    def __init__(self, model: str = "resnet18", in_channels: int = 3, pretrained: bool = True):
         super().__init__()
         if model == "resnet18":
             self.backbone = models.resnet18(pretrained)
@@ -52,6 +52,13 @@ class ResnetEncoder(Encoder):
 
         if pretrained:
             self.backbone.eval()
+            
+        if in_channels != 3 and pretrained:
+            raise ValueError("Pretrained models only support RGB input")
+        elif in_channels != 3:
+            self.backbone.conv1 = nn.Conv2d(
+                in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False
+            )
 
         self.inc = nn.Sequential(
             self.backbone.conv1,
@@ -71,7 +78,7 @@ class ResnetEncoder(Encoder):
 
 
 class DensenetEncoder(Encoder):
-    def __init__(self, model: str = "densenet121", pretrained: bool = True):
+    def __init__(self, model: str = "densenet121", in_channels: int = 3, pretrained: bool = True):
         super().__init__()
         if name == 'densenet121':
             self.backbone = models.densenet121(pretrained=pretrained)
