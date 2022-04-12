@@ -234,6 +234,11 @@ class RandomHorizontalFlip(Augmentation):
 
 
 class Normalize(Augmentation):
+    dataset_values = {
+        "imagenet":
+            {"mean": [0.485, 0.456, 0.406]},
+            {"std": [0.229, 0.224, 0.225]}
+    }
     def __init__(self, mean: list[float], std: list[float]):
         """
         Normalize image with mean and standard deviation for each channel.
@@ -268,13 +273,13 @@ class Normalize(Augmentation):
         return image, target
 
     @classmethod
-    def from_string(cls, string: str) -> Normalize:
+    def from_pretrained(cls, dataset_name: str = "imagenet"):
         """
-        Initialize class from string.
+        Create Normalize from pretrained dataset.
 
         Parameters
         ----------
-        string : str
+        dataset_name : str
             Name of dataset to use.
         
         Returns
@@ -282,13 +287,7 @@ class Normalize(Augmentation):
         Normalize
             Instance with mean and standard deviations for the dataset.
         """
-        if string.lower() == "imagenet":
-            mean = [0.485, 0.456, 0.406]
-            std = [0.229, 0.224, 0.225]
-        else:
-            raise ValueError(f"{string} is not currently supported")
-        
-        return cls(mean, std)
+        return cls(**self.dataset_values.get(dataset_name))
 
 
 class Scale(Augmentation):
