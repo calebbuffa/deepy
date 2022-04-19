@@ -43,12 +43,11 @@ class ResnetEncoder(Encoder):
 
         self.down_dimensions = [4, 8, 16, 32]
 
-        if pretrained:
-            self.backbone.eval()
-
         if in_channels != 3 and pretrained:
             raise ValueError("Pretrained models only support RGB input")
-        elif in_channels !=3:
+        elif in_channels == 3 and pretrained:
+            self.backbone.eval()
+        elif in_channels != 3:
             self.backbone.conv1.in_channels = in_channels
 
         self.inc = nn.Sequential(
@@ -67,7 +66,6 @@ class ResnetEncoder(Encoder):
         )
 
 
-
 class DensenetEncoder(Encoder):
     def __init__(
         self, model: str = "densenet121", in_channels: int = 3, pretrained: bool = True
@@ -78,11 +76,10 @@ class DensenetEncoder(Encoder):
         self.down_dimensions = [4, 8, 16, 16]
         self.out_channels = [128, 256, 512, 1024]
 
-        if pretrained:
-            self.backbone.eval()
-
         if in_channels != 3 and pretrained:
             raise ValueError("Pretained models only support RGB input")
+        elif in_channels == 3 and pretrained:
+            self.backbone.eval()
         elif in_channels != 3:
             self.backbone.features.conv0.in_channels = in_channels
 
@@ -101,10 +98,54 @@ class DensenetEncoder(Encoder):
         layer3 = nn.Sequential(
             self.backbone.features.denseblock3, self.backbone.features.transition3,
         )
-        layer4 = nn.Sequential(
-            self.backbone.features.denseblock4, self.backbone.features.norm5,
+        layer4 = nn.Sequential(self.backbone.features.denseblock4)
+
+        self.encoding_blocks = nn.ModuleList([layer1, layer2, layer3, layer4])
+
+
+class MobilenetEncoder(Encoder):
+    def __init__(self, in_channels: int = 3, pretrained: bool = True):
+        super().__init__()
+        self.backbone = OrderedDict(
+            list(
+                models.mobilenet_v3_large(
+                    pretrained=pretrained
+                ).features.named_children()
+            )
         )
 
-        self.encoding_blocks = nn.ModuleList([layer1, layer2, layer3, layer4,])
+        self.down_dimensions = [4, 8, 16, 32]
+        self.out_channels = [24, 40, 112, 960]
 
+        if in_channels != 3 and pretrained:
+            raise ValueError("Pretrained models only support RGB input")
+        elif in_channels == 3 and pretrained:
+            self.backbone.eval()
+        elif in_channels != 3:
+            self.backbone["0"][0].in_channels = in_channels
 
+        self.inc = nn.Sequential(self.backbone["0"], self.backbone["1"],)
+
+        layer1 = nn.Sequential(self.backbone["2"], self.backbone["3"],)
+
+        layer2 = nn.Sequential(
+            self.backbone["4"], self.backbone["5"], self.backbone["6"]
+        )
+
+        layer3 = nn.Sequential(
+            self.backbone["7"],
+            self.backbone["8"],
+            self.backbone["9"],
+            self.backbone["10"],
+            self.backbone["11"],
+            self.backbone["12"],
+        )
+
+        layer4 = nn.Sequential(
+            self.backbone["13"],
+            self.backbone["14"],
+            self.backbone["15"],
+            self.backbone["16"],
+        )
+
+        self.encoding_blocks = nn.ModuleList([layer1, layer2, layer3, layer4])
