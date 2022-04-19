@@ -24,7 +24,11 @@ class Encoder(nn.Module):
 
 class ResnetEncoder(Encoder):
     def __init__(
-        self, model: str = "resnet18", pretrained: bool = True, in_channels: int = 3
+        self,
+        model: str = "resnet18",
+        pretrained: bool = False,
+        in_channels: int = 3,
+        attention: bool = False,
     ):
         super().__init__()
         self.backbone = getattr(models, model)(pretrained=pretrained)
@@ -48,23 +52,40 @@ class ResnetEncoder(Encoder):
         elif in_channels == 3 and pretrained:
             self.backbone.eval()
         elif in_channels != 3:
-            self.backbone.conv1.in_channels = in_channels
+            self.backbone.conv1 = nn.Conv2d(
+                in_channels,
+                64,
+                kernel_size=(7, 7),
+                stride=(2, 2),
+                padding=(3, 3),
+                bias=False,
+            )
 
-        self.inc = nn.Sequential(
-            self.backbone.conv1,
-            self.backbone.bn1,
-            self.backbone.relu,
-            self.backbone.maxpool,
-        )
-        self.encoding_blocks = nn.ModuleList(
+        inc = nn.ModuleList(
             [
-                self.backbone.layer1,
-                self.backbone.layer2,
-                self.backbone.layer3,
-                self.backbone.layer4,
+                self.backbone.conv1,
+                self.backbone.bn1,
+                self.backbone.relu,
+                self.backbone.maxpool,
             ]
         )
 
+        layer1 = nn.ModuleList([self.backbone.layer1])
+        layer2 = nn.ModuleList([self.backbone.layer2])
+        layer3 = nn.ModuleList([self.backbone.layer3])
+        layer4 = nn.ModuleList([self.backbone.layer4])
+
+        if attention and not pretrained:
+            inc.insert(3, SqueezeExcitationBlock(64, 16))
+            layer1.append(SqueezeExcitationBlock(self.out_channels[0], 16))
+            layer2.append(SqueezeExcitationBlock(self.out_channels[1], 16))
+            layer3.append(SqueezeExcitationBlock(self.out_channels[2], 16))
+            layer4.append(SqueezeExcitationBlock(self.out_channels[3], 16))
+
+        self.inc = nn.Sequential(*inc)
+        self.encoding_blocks = nn.ModuleList(
+            [nn.Sequential(*layer) for layer in [layer1, layer2, layer3, layer4]]
+        )
 
 class DensenetEncoder(Encoder):
     def __init__(
