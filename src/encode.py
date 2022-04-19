@@ -46,13 +46,10 @@ class ResnetEncoder(Encoder):
         if pretrained:
             self.backbone.eval()
 
-        if in_channels != 3:
-            if pretrained:
-                raise ValueError("Pretrained models only support RGB input")
-            else:
-                self.backbone.conv1 = nn.Conv2d(
-                    in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False
-                )
+        if in_channels != 3 and pretrained:
+            raise ValueError("Pretrained models only support RGB input")
+        elif in_channels !=3:
+            self.backbone.conv1.in_channels = in_channels
 
         self.inc = nn.Sequential(
             self.backbone.conv1,
@@ -68,6 +65,7 @@ class ResnetEncoder(Encoder):
                 self.backbone.layer4,
             ]
         )
+
 
 
 class DensenetEncoder(Encoder):
