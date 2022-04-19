@@ -8,12 +8,10 @@ from torchvision import models
 from torchvision.ops import FeaturePyramidNetwork
 
 class Encoder(nn.Module):
-
     def forward(self, x: Tensor) -> OrderedDict[str, Tensor]:
+        encoded_feature_maps = OrderedDict()
         if self.inc:
             x = self.inc(x)
-
-        encoded_feature_maps = OrderedDict()
         for idx, encoding_block in enumerate(self.encoding_blocks):
             x = encoding_block(x)
             encoded_feature_maps[f"p{idx + 2}"] = x
@@ -25,48 +23,43 @@ class Encoder(nn.Module):
             param.requires_grad = False
 
 class ResnetEncoder(Encoder):
-    def __init__(self, model: str = "resnet18", in_channels: int = 3, pretrained: bool = True):
+    def __init__(
+        self, model: str = "resnet18", pretrained: bool = True, in_channels: int = 3
+    ):
         super().__init__()
-        if model == "resnet18":
-            self.backbone = models.resnet18(pretrained)
+        self.backbone = getattr(models, model)(pretrained=pretrained)
+        if model in {"resnet18", "resnet34"}:
             self.out_channels = [64, 128, 256, 512]
-        elif model == 'resnet34':
-            self.backbone = models.resnet34(pretrained)
-            self.out_channels = [64, 128, 256, 512]
-        elif model == 'resnet50':
-            self.backbone = models.resnet50(pretrained)
-            self.out_channels = [256, 512, 1024, 2048]
-        elif model == 'resnet101':
-            self.backbone = models.resnet101(pretrained)
-            self.out_channels = [256, 512, 1024, 2048]
-        elif model == 'resnet152':
-            self.backbone = models.resnet152(pretrained)
-            self.out_channels = [256, 512, 1024, 2048]
-        elif model == 'resnext50':
-            self.backbone = models.resnext50_32x4d(pretrained)
+        elif model in {
+            "resnet50",
+            "resnet101",
+            "resnet152",
+            "resnext50_32x4d",
+            "resnext101_32x8d",
+        }:
             self.out_channels = [256, 512, 1024, 2048]
         else:
             raise ValueError(f"{model} is not supported")
 
-        self.down_dim = [4, 8, 16, 32]
+        self.down_dimensions = [4, 8, 16, 32]
 
         if pretrained:
             self.backbone.eval()
-            
-        if in_channels != 3 and pretrained:
-            raise ValueError("Pretrained models only support RGB input")
-        elif in_channels != 3:
-            self.backbone.conv1 = nn.Conv2d(
-                in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False
-            )
+
+        if in_channels != 3:
+            if pretrained:
+                raise ValueError("Pretrained models only support RGB input")
+            else:
+                self.backbone.conv1 = nn.Conv2d(
+                    in_channels, 64, kernel_size=7, stride=2, padding=3, bias=False
+                )
 
         self.inc = nn.Sequential(
             self.backbone.conv1,
             self.backbone.bn1,
             self.backbone.relu,
-            self.backbone.maxpool
+            self.backbone.maxpool,
         )
-
         self.encoding_blocks = nn.ModuleList(
             [
                 self.backbone.layer1,
@@ -78,35 +71,42 @@ class ResnetEncoder(Encoder):
 
 
 class DensenetEncoder(Encoder):
-    def __init__(self, model: str = "densenet121", in_channels: int = 3, pretrained: bool = True):
+    def __init__(
+        self, model: str = "densenet121", in_channels: int = 3, pretrained: bool = True
+    ):
         super().__init__()
-        if name == 'densenet121':
-            self.backbone = models.densenet121(pretrained=pretrained)
-            self.out_channels = []
-        elif name == 'densenet161':
-            self.backbone = models.densenet161(pretrained=pretrained)
-            self.out_channels = []
-        elif name == 'densenet169':
-            self.backbone = models.densenet169(pretrained=pretrained)
-            self.out_channels = []
-        elif name == 'densenet201':
-            self.backbone = models.densenet201(pretrained=pretrained)
-            self.out_channels = []
-        else:
-            raise ValueError(f"{model} not supported")
+        self.backbone = getattr(models, model)(pretrained=pretrained)
 
-        self.down_dim = []
+        self.down_dimensions = [4, 8, 16, 16]
+        self.out_channels = [128, 256, 512, 1024]
+
+        if pretrained:
+            self.backbone.eval()
+
+        if in_channels != 3 and pretrained:
+            raise ValueError("Pretained models only support RGB input")
+        elif in_channels != 3:
+            self.backbone.features.conv0.in_channels = in_channels
 
         self.inc = nn.Sequential(
-            )
-
-        self.encoding_blocks = nn.ModuleList(
-            [
-                self.backbone.denseblock1,
-                self.backbone.denseblock2,
-                self.backbone.denseblock3,
-                self.backbone.denseblock4
-            ]
+            self.backbone.features.conv0,
+            self.backbone.features.norm0,
+            self.backbone.features.relu0,
         )
+
+        layer1 = nn.Sequential(
+            self.backbone.features.denseblock1, self.backbone.features.transition1,
+        )
+        layer2 = nn.Sequential(
+            self.backbone.features.denseblock2, self.backbone.features.transition2,
+        )
+        layer3 = nn.Sequential(
+            self.backbone.features.denseblock3, self.backbone.features.transition3,
+        )
+        layer4 = nn.Sequential(
+            self.backbone.features.denseblock4, self.backbone.features.norm5,
+        )
+
+        self.encoding_blocks = nn.ModuleList([layer1, layer2, layer3, layer4,])
 
 
