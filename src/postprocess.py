@@ -71,6 +71,4 @@ class MatrixNMS(nn.Module):
         else:
             raise NotImplementedError
 
-        # update the score.
-        cate_scores_update = cate_scores * decay_coefficient
-        return cate_scores_update
+        return cate_scores * decay_coefficient

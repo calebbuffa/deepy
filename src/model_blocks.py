@@ -89,11 +89,7 @@ class FPN(nn.Module):
         fpn_out_channels: int = 256,
     ):
         super().__init__()
-        if "resnet" or "resnext" in backbone:
-            self.encoder = ResnetEncoder(model=backbone, pretrained=pretrained)
-        else:
-            raise ValueError(f"{backbone} is not supported")
-
+        self.encoder = ResnetEncoder(model=backbone, pretrained=pretrained)
         if pretrained:
             self.encoder.freeze()
 
